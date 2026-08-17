@@ -1,0 +1,26 @@
+replicaCount: 1
+
+image:
+  repository: mysql
+  tag: "8.0"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 3306
+
+secret:
+  rootPassword: password123
+  database: test_db
+  username: appuser
+  password: password123
+
+storage:
+  size: 5Gi
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi

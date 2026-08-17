@@ -1,0 +1,17 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+*.tfvars.json
+
+# Kubernetes
+*.secret.yaml
+*.secret.yml
+
+# Others
+*.log
+.DS_Store
+*.swp
+*.swo

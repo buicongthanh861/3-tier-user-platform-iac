@@ -16,6 +16,7 @@ secret:
 
 storage:
   size: 5Gi
+  storageClass: "gp3"
 
 resources:
   limits:

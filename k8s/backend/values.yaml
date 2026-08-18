@@ -27,5 +27,6 @@ autoscaling:
   targetCPUUtilizationPercentage: 50
 ingress:
   enabled: true
-  className: alb
+  className: nginx
   host: backend.3-tier.com
+  

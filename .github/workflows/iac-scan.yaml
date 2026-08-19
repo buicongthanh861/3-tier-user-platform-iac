@@ -1,0 +1,46 @@
+name: IAC Scan
+
+on:
+  push:
+    branches: [master, qa]
+    paths:
+      - terraform/**
+      - k8s/**
+      - argocd/**
+
+jobs:
+  checkov:
+    name: Checkov Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Scan Terraform
+        run: checkov -d terraform --framework terraform --quiet || true
+
+      - name: Scan Kubernetes
+        run: checkov -d k8s --framework kubernetes --quiet || true
+
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.5.0'
+
+      - name: Validate
+        run: |
+          cd terraform
+          terraform init -backend=false
+          terraform validate
+          terraform fmt -check

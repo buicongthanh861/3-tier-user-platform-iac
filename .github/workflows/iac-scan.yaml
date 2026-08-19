@@ -1,46 +1,87 @@
-name: IAC Scan
+name: IaC Scan
 
 on:
   push:
-    branches: [master, qa]
+    branches: [master]
     paths:
       - terraform/**
       - k8s/**
       - argocd/**
+      - .github/workflows/iac-scan.yaml
+  pull_request:
+    branches: [master]
+    paths:
+      - terraform/**
+      - k8s/**
+      - argocd/**
+      - .github/workflows/iac-scan.yaml
+
+permissions:
+  contents: read
 
 jobs:
-  checkov:
-    name: Checkov Scan
+  security-scan:
+    name: Checkov security scan
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install Checkov
         run: pip install checkov
 
-      - name: Scan Terraform
-        run: checkov -d terraform --framework terraform --quiet || true
+      - name: Scan Terraform IaC
+        run: checkov -d terraform --framework terraform --quiet
+        continue-on-error: true
 
-      - name: Scan Kubernetes
-        run: checkov -d k8s --framework kubernetes --quiet || true
+      - name: Scan Kubernetes manifests
+        run: checkov -d k8s --framework kubernetes --quiet
+        continue-on-error: true
 
-  terraform-validate:
-    name: Terraform Validate
+      - name: Scan ArgoCD manifests
+        run: checkov -d argocd --framework kubernetes --quiet
+        continue-on-error: true
+
+  terraform-validation:
+    name: Terraform and Helm validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: '1.5.0'
 
-      - name: Validate
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.14.4'
+
+      - name: Terraform init
+        working-directory: terraform
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Terraform format check
+        working-directory: terraform
+        run: terraform fmt -check -recursive
+
+      - name: Helm lint charts
         run: |
-          cd terraform
-          terraform init -backend=false
-          terraform validate
-          terraform fmt -check
+          for chart in k8s/*; do
+            if [ -f "$chart/Chart.yaml" ]; then
+              echo "Linting $chart"
+              helm lint "$chart"
+            fi
+          done

@@ -92,7 +92,7 @@ Mac dinh ha tang dung environment `staging`, region `ap-southeast-1` va cluster 
 
 ```bash
 cd scripts
-./connect.sh
+./start-all.sh
 kubectl get nodes
 ```
 

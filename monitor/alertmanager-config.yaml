@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-kube-prometheus-stack-alertmanager    
+  namespace: monitoring
+type: Opaque
+stringData:
+  alertmanager.yaml: |
+    global:
+      resolve_timeout: 5m
+      smtp_smarthost: 'smtp.gmail.com:587'
+      smtp_from: 'buicongthanh8888@gmail.com'
+      smtp_auth_username: 'buicongthanh8888@gmail.com'
+      smtp_auth_password: 'ccfxaipxcstytder'  
+      smtp_require_tls: true
+
+    route:
+      receiver: 'gmail-notifications'
+      group_by: ['alertname', 'namespace']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 1h
+      routes:
+        - matchers:
+            - severity="critical"
+          receiver: 'gmail-notifications'
+          repeat_interval: 15m       # pod chết -> nhắc lại nhanh hơn
+
+    receivers:
+      - name: 'gmail-notifications'
+        email_configs:
+          - to: 'buicongthanh8888@gmail.com'
+            send_resolved: true
+            headers:
+              subject: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+            html: |
+              {{ range .Alerts }}
+              <b>Alert:</b> {{ .Labels.alertname }}<br>
+              <b>Severity:</b> {{ .Labels.severity }}<br>
+              <b>Namespace:</b> {{ .Labels.namespace }}<br>
+              <b>Pod:</b> {{ .Labels.pod }}<br>
+              <b>Summary:</b> {{ .Annotations.summary }}<br>
+              <b>Description:</b> {{ .Annotations.description }}<br>
+              <hr>
+              {{ end }}

@@ -1,0 +1,97 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: user-platform-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack     
+spec:
+  groups:
+    - name: resource-usage.rules
+      rules:
+ 
+        # ---------- CPU cao ----------
+        - alert: HighCPUUsage
+          expr: |
+            sum(rate(container_cpu_usage_seconds_total{container!="", container!="POD"}[5m])) by (pod, namespace)
+              /
+            sum(container_spec_cpu_quota{container!="", container!="POD"} / container_spec_cpu_period{container!="", container!="POD"}) by (pod, namespace)
+              > 0.85
+          for: 3m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} dùng CPU > 85% limit"
+            description: "Namespace {{ $labels.namespace }} - pod {{ $labels.pod }} đã vượt 85% CPU limit trong 3 phút."
+ 
+        # ---------- RAM cao ----------
+        - alert: HighMemoryUsage
+          expr: |
+            sum(container_memory_working_set_bytes{container!="", container!="POD"}) by (pod, namespace)
+              /
+            sum(container_spec_memory_limit_bytes{container!="", container!="POD"} > 0) by (pod, namespace)
+              > 0.85
+          for: 3m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.pod }} dùng RAM > 85% limit"
+            description: "Namespace {{ $labels.namespace }} - pod {{ $labels.pod }} đã vượt 85% memory limit trong 3 phút."
+ 
+        # ---------- Disk (Node) cao ----------
+        - alert: HighNodeDiskUsage
+          expr: |
+            (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) > 0.85
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} sắp đầy ổ đĩa ({{ $labels.mountpoint }})"
+            description: "Disk usage > 85% trên node {{ $labels.instance }}, mount {{ $labels.mountpoint }}."
+ 
+        # ---------- Disk (PVC) cao ----------
+        - alert: HighPVCUsage
+          expr: |
+            kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.85
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PVC {{ $labels.persistentvolumeclaim }} sắp đầy"
+            description: "Namespace {{ $labels.namespace }} - PVC {{ $labels.persistentvolumeclaim }} đã dùng > 85% dung lượng."
+ 
+    - name: pod-health.rules
+      rules:
+ 
+        # ---------- Pod crash/restart ----------
+        - alert: PodCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total[10m]) > 3
+          for: 0s
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{ $labels.pod }} restart liên tục"
+            description: "Namespace {{ $labels.namespace }} - container {{ $labels.container }} trong pod {{ $labels.pod }} đã restart hơn 3 lần trong 10 phút."
+ 
+        # ---------- Pod không chạy ----------
+        - alert: PodNotRunning
+          expr: |
+            kube_pod_status_phase{phase=~"Failed|Unknown"} > 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{ $labels.pod }} ở trạng thái {{ $labels.phase }}"
+            description: "Namespace {{ $labels.namespace }} - pod {{ $labels.pod }} đang ở phase {{ $labels.phase }}."
+ 
+        # ---------- Pod OOMKilled ----------
+        - alert: PodOOMKilled
+          expr: |
+            kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+          for: 0m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod {{ $labels.pod }} bị OOMKilled"
+            description: "Namespace {{ $labels.namespace }} - container {{ $labels.container }} trong pod {{ $labels.pod }} vừa bị kill do hết RAM."

@@ -1,7 +1,7 @@
 replicaCount: 1
 image:
   repository: 159749281332.dkr.ecr.ap-southeast-1.amazonaws.com/3-tier-user-platform-frontend
-  tag: a0b6df09a32b033412c323e80c45e0d431ee643d
+  tag: 151e1893855e8362b2e923615e38c5299ff1823e
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
